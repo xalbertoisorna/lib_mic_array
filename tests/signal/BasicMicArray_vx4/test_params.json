@@ -1,0 +1,6 @@
+{
+    "N_MICS": [1],
+    "FRAME_SIZE": [16],
+    "USE_ISR": [0],
+    "SAMP_FREQ": [16000]
+}

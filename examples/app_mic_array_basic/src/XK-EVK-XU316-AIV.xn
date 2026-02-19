@@ -24,6 +24,7 @@
           <Tile Number="1" Reference="tile[1]">
             <Port Location="XS1_PORT_1C"  Name="PORT_UART_TX"/>
             <Port Location="XS1_PORT_1H"  Name="PORT_BUTTON"/>
+            <Port Location="XS1_PORT_1D"  Name="PORT_MCLK"/>
             <Port Location="XS1_PORT_1L"  Name="PORT_MIC_CLK"/>
             <Port Location="XS1_PORT_1J"  Name="PORT_MIC_DATA"/>
             <Port Location="XS1_PORT_4E"  Name="PORT_I2C"/> <!-- SDA: bit 0, SCL: bit 1 -->
