@@ -13,6 +13,10 @@
 #include "mic_array/etc/filters_default.h"
 
 #if !USE_DEFAULT_API
+#include "app.h"
+#endif
+
+#if !USE_DEFAULT_API
 
 #ifndef STR
 #define STR(s) #s
@@ -136,3 +140,32 @@ void app_mic_array_task(chanend_t c_frames_out)
 }
 #endif
 
+MA_C_API
+int main_tile_1()
+{
+    chanend_t c_audio_frames = chanend_alloc();
+#if USE_DEFAULT_API
+#if (MIC_ARRAY_CONFIG_MIC_COUNT == 2)
+    pdm_rx_resources_t pdm_res = PDM_RX_RESOURCES_DDR(
+        PORT_MCLK_IN, PORT_PDM_CLK, PORT_PDM_DATA,
+        APP_MCLK_FREQUENCY, APP_PDM_CLOCK_FREQUENCY, XS1_CLKBLK_1, XS1_CLKBLK_2);
+#else // For 1 mic, only one clock block is needed
+    pdm_rx_resources_t pdm_res = PDM_RX_RESOURCES_SDR(
+        PORT_MCLK_IN, PORT_PDM_CLK, PORT_PDM_DATA,
+        APP_MCLK_FREQUENCY, APP_PDM_CLOCK_FREQUENCY, XS1_CLKBLK_1);
+#endif
+    mic_array_init(&pdm_res, NULL, APP_SAMP_FREQ);
+    mic_array_start((chanend_t)c_audio_frames);
+#else // Default API not used, call app code
+    app_mic_array_init();
+    app_mic_array_task((chanend_t)c_audio_frames);
+#endif
+    return 0;
+}
+
+MA_C_API
+int main_tile_0()
+{
+  // intentionally empty
+  return 0;   
+}
