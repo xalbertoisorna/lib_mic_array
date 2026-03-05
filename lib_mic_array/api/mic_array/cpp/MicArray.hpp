@@ -184,6 +184,7 @@ namespace  mic_array {
 //////////////////////////////////////////////
 // Template function implementations below. //
 //////////////////////////////////////////////
+#include <xcore/hwtimer.h>
 
 template <unsigned MIC_COUNT,
           class TDecimator,
@@ -196,13 +197,18 @@ void mic_array::MicArray<MIC_COUNT,TDecimator,TPdmRx,
 {
   int32_t sample_out[MIC_COUNT] = {0};
   volatile bool shutdown = false;
+  hwtimer_t tmr = hwtimer_alloc();
+  unsigned t0, t1;
 
   while(!shutdown){
+    // t0 = hwtimer_get_time(tmr);
     uint32_t *pdm_samples = PdmRx.GetPdmBlock();
     Decimator.ProcessBlock(sample_out, pdm_samples);
     SampleFilter.Filter(sample_out);
     shutdown = OutputHandler.OutputSample(sample_out);
+    // t1 = hwtimer_get_time(tmr);
   }
+  // printf("cycles %d\n", (t1 - t0));
   PdmRx.Shutdown();
   OutputHandler.CompleteShutdown(); // Exchange end token with the app to close channel and indicate completion.
                                     // ma_shutdown() will now return
