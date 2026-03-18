@@ -1,6 +1,6 @@
 // This file relates to internal XMOS infrastructure and should be ignored by external users
 
-@Library('xmos_jenkins_shared_library@v0.46.0') _
+@Library('xmos_jenkins_shared_library@v0.45.0') _
 
 getApproval()
 pipeline {
@@ -15,11 +15,16 @@ pipeline {
     string(
       name: 'XMOSDOC_VERSION',
       defaultValue: 'v8.0.1',
-      description: 'The xmosdoc version')
-
+      description: 'The xmosdoc version'
+    )
+    string(
+      name: 'TOOLS_VX4_VERSION',
+      defaultValue: '-j --repo arch_vx_slipgate -b master -a XTC 116',
+      description: 'The XTC Slipgate tools version'
+    )
     string(
       name: 'INFR_APPS_VERSION',
-      defaultValue: 'v3.3.0',
+      defaultValue: 'feature/fix_version_check',
       description: 'The infr_apps version'
     )
     choice(
@@ -136,13 +141,11 @@ pipeline {
         }
       }
     } // stage('Custom CMake build')
-    
+
     stage('Tests') {
       parallel {
-        stage('XS3 tests') {
-          agent {
-            label 'xcore.ai'
-          }
+        stage('XS3 Tests') {
+          agent {label 'xcore.ai'}
           stages {
             stage("Checkout and Build") {
               steps {
@@ -209,11 +212,54 @@ pipeline {
             } // stage('Run tests')
           } // stages
           post {
-            cleanup {
-              xcoreCleanSandbox()
-            }
-          }
-        } // stage('HW tests')
+            cleanup {xcoreCleanSandbox()}
+          } // post
+        } // XS3 Tests
+
+        stage('VX4 Tests') {
+          agent {label "vx4"}
+          stages {
+            stage("Checkout and Build") {
+              steps {
+              dir(REPO_NAME){
+                checkoutScmShallow()
+                dir("tests") {
+                  createVenv(reqFile: "requirements.txt")
+                  withVenv {
+                    dir("unit") {
+                      xcoreBuild(toolsVersion: params.TOOLS_VX4_VERSION)
+                    }
+                    dir ("signal/BasicMicArray") {
+                      withTools(params.TOOLS_VX4_VERSION){
+                      sh '''
+                        cmake -G Ninja -B build
+                        ninja -C build -j8
+                      '''
+                      }
+                    }
+                  } // withVenv
+                } // dir("tests")
+              } // dir(REPO_NAME)
+              } // steps
+            } // stage("Checkout and Build")
+            stage('Run tests') {
+              steps {
+              dir("${REPO_NAME}/tests") {
+              withVenv {
+              dir("unit") {
+                withTools(params.TOOLS_VX4_VERSION) {sh "xrun --xscope bin/tests-unit.xe"}
+              }
+              dir("signal/BasicMicArray") {
+                withTools(params.TOOLS_VX4_VERSION) {sh 'python -m pytest --level nightly --seed 12345 -k "(0_isr or lowpower) and not 16frame-8n" -v'} // Skipping 16frame-8n. See https://github.com/xmos/lib_mic_array/issues/288
+              }
+              } // withVenv
+              }}} // stage('Run tests')
+          } // stages
+          post {
+            cleanup {xcoreCleanSandbox()}
+          } //post
+        } // VX4 Tests
+
       } // parallel
     } // stage('Tests')
 
