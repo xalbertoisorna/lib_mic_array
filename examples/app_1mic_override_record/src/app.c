@@ -20,28 +20,6 @@
 DECLARE_JOB(user_mic, (chanend_t));
 DECLARE_JOB(user_audio, (chanend_t));
 
-static inline
-void _delay_ticks(unsigned ticks) {
-  hwtimer_t tmr = hwtimer_alloc();
-  hwtimer_delay(tmr, ticks);
-  hwtimer_free(tmr);
-}
-
-static inline
-void _delay_milliseconds(unsigned delay) {
-  hwtimer_t tmr = hwtimer_alloc();
-  hwtimer_delay(tmr, delay * XS1_TIMER_MHZ * 1000);
-  hwtimer_free(tmr);
-}
-
-void hwtimer_delay_milliseconds(unsigned delay) {
-  _delay_milliseconds(delay);
-}
-
-void delay_ticks_longlong(unsigned long long ticks) {
-  _delay_ticks(ticks);
-}
-
 pdm_rx_resources_t pdm_res_ddr = PDM_RX_RESOURCES_DDR(
     PORT_MCLK_IN,
     PORT_PDM_CLK,
@@ -66,7 +44,6 @@ void user_mic(chanend_t c_mic_audio)
     while (1)
     {
         unsigned override = chan_in_word(c_mic_audio);
-        printf("mic init %u\n", override);
         if (override == 2) {return;}
         if (override) {
             mic_array_enable_1mic_override();
@@ -75,9 +52,7 @@ void user_mic(chanend_t c_mic_audio)
         else {
             mic_array_init(&pdm_res_ddr, NULL, APP_OUT_FREQ_HZ);
         }
-
         mic_array_start(c_mic_audio);
-        printf("mic array exited\n");
     }
 }
 
@@ -104,11 +79,9 @@ void user_audio(chanend_t c_mic_audio)
     {
         // at APP_FRAME_TRANS reinitialise mic array with 2 mics
         if (frame_counter == APP_FRAME_TRANS) {
-            printf("restarting mic array\n");
             ma_shutdown(c_mic_audio);
             chan_out_word(c_mic_audio, 0);
             chans_read = APP_MIC_COUNT;
-            delay_milliseconds(900);
         }
 
         t0 = hwtimer_get_time(tmr);
@@ -117,8 +90,6 @@ void user_audio(chanend_t c_mic_audio)
         for (unsigned i = 0; i < APP_N_SAMPLES * APP_MIC_COUNT; i ++) {
             buff_ptr[i] = samps[i];
         }
-        //buff_ptr[0] = samps[0];
-        //buff_ptr[1] = samps[1];
         buff_ptr += APP_N_SAMPLES * APP_MIC_COUNT;
 
         t1 = hwtimer_get_time(tmr);
